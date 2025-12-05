@@ -101,16 +101,26 @@ st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM"
 st.markdown("Il a été conçu à partir de données de production PV à Utrecht (Pays-Bas)")
 st.markdown("Les données proviennent de (mettre lien ressource)")
 st.markdown("Les données météos (historiques et de prévisions qui sont utilisées sur l'appli) proviennent de **open-meteo.com**")
-st.markdown("Le modèle prend à la fois des variables météos :")
-st.markdown("- **Température (°C)**")
-st.markdown("- **Humidité Relative (%)**")
-st.markdown("- **Vitesse du vent à 10m (km/h)**")
-st.markdown("- **Couverture nuageuse (%)**")
-st.markdown("- **Irradiation global orientée (W/m$^2$)**")
-st.markdown("Et des variables temporelles :")
-st.markdown("- **Mois**")
-st.markdown("- **Jour de l'année**")
-st.markdown("- **Heure**")
+
+# Présentation des variables utilisées dans le modèle
+col_meteo, col_temporelle = st.columns(2)
+
+# Variables météos
+with col_meteo:
+    st.markdown("### ☁️ Variables Météo")
+    st.markdown("- **Température (°C)**")
+    st.markdown("- **Humidité Relative (%)**")
+    st.markdown("- **Vitesse du vent à 10m (km/h)**")
+    st.markdown("- **Couverture nuageuse (%)**")
+    st.markdown("- **Irradiation global orientée (W/m$^2$)**")
+
+# Variables temporelles
+with col_temporelle:
+    st.markdown("### ⏱️ Variables Temporelles")
+    st.markdown("- **Mois**")
+    st.markdown("- **Jour de l'année**")
+    st.markdown("- **Heure**")
+
 st.markdown("---")
 
 # Interface utilisateur
