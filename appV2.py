@@ -225,7 +225,7 @@ if pv_model and predict_button:
         st.write(f"Production Totale Prévue sur {forecast_days} jours")
         production_value = f"{total_production:,.2f}".replace(",", " ")
 
-        st.markdown(f"**{production_value} kWh/kWc**")
+        st.markdown(f"**##{production_value} kWh/kWc**")
 
         daily_production = df_processed.set_index('time').resample('D')['Production_PV_kW'].sum()
         if not daily_production.empty:
