@@ -222,10 +222,12 @@ if pv_model and predict_button:
         # Affichage de la production totale sur la période considérée
         total_production = df_processed['Production_PV_kW'].sum()
 
-        st.write(f"Production Totale Prévue sur {forecast_days} jours")
-        production_value = f"{total_production:,.2f}".replace(",", " ")
 
-        st.markdown(f"##{production_value} kWh/kWc")
+        st.metric(
+                label=f"Production Totale Prévue sur {forecast_days} jours",
+                value=f"{total_production:,.2f} kWh/kWc".replace(",", " ")
+            )
+
 
         daily_production = df_processed.set_index('time').resample('D')['Production_PV_kW'].sum()
         if not daily_production.empty:
