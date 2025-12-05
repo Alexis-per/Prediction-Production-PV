@@ -234,7 +234,7 @@ if pv_model and predict_button:
                 st.subheader("Répartition Journalière (kWh/kWc)")
                 st.dataframe(daily_production.to_frame(name='kWh/kWc par jour').style.format("{:,.2f}"))
 
-        # 4.4.2 Affichage graphique (Série Temporelle)
+        # Affichage graphique de la production prévue
         st.subheader("Prévision Horaire de Production PV (kW/kwc)")
         df_chart = df_processed.set_index('time')[['Production_PV_kW']]
 
