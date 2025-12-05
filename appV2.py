@@ -95,8 +95,20 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
 # Interface de l'application
 # Titre en haut du site
 st.title("Système de Prédiction de Production PV")
-st.markdown(
-    "Expliquer le fonctionnement de l'application")
+st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
+st.markdown("Il a été conçu à partir de données de production PV à Utrecht (Pays-Bas)")
+st.markdown("Les données proviennent de (mettre lien ressource)")
+st.markdown("Les données météos (historiques et de prévisions qui sont utilisées sur l'appli) proviennent de **open-meteo.com**")
+st.markdown("Le modèle prend à la fois des variables météos :")
+st.markdown("- Température (°C)")
+st.markdown("- Humidité Relative (%)")
+st.markdown("- Vitesse du vent à 10m (km/h)")
+st.markdown("- Couverture nuageuse (%)")
+st.markdown("- Irradiation global orientée (W/m$^2$)")
+st.markdown("Et des variables temporelles :")
+st.markdown("- Mois")
+st.markdown("- Jour de l'année")
+st.markdown("- Heure")
 st.markdown("---")
 
 # Zone de saisie (Sidebar)
