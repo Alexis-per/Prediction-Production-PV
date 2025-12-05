@@ -6,7 +6,7 @@ import numpy as np
 import altair as alt
 from datetime import datetime
 
-# --- Configuration de la page Streamlit ---
+# Configuration application
 st.set_page_config(
     page_title="Prédiction de Production PV",
     layout="wide",
@@ -32,13 +32,13 @@ def load_model(path):
 pv_model = load_model(MODEL_PATH)
 
 
-# Utilsiation de l'API de open-meteo.com
+# Utilsiation de l'API de open-meteo.com pour obtenir les données prévisionnelles
 def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
     """
     Récupère les prévisions météorologiques horaires incluant l'irradiation globale inclinée (GTI).
     """
 
-    # Variables météorologiques requises par votre modèle
+    # Variables météorologiques requises par le modèle
     hourly_vars = [
         "temperature_2m",
         "relative_humidity_2m",
@@ -95,6 +95,8 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
 # Interface de l'application
 # Titre en haut du site
 st.title("Système de Prédiction de Production PV")
+
+# Explication de l'application
 st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
 st.markdown("Il a été conçu à partir de données de production PV à Utrecht (Pays-Bas)")
 st.markdown("Les données proviennent de (mettre lien ressource)")
@@ -111,19 +113,17 @@ st.markdown("- **Jour de l'année**")
 st.markdown("- **Heure**")
 st.markdown("---")
 
-# Zone de saisie (Sidebar)
-
+# Interface utilisateur
 st.header("Localisation du panneau PV")
 
 # Inputs de Localisation
 latitude = st.number_input("Latitude (Lat)", min_value=-90.0, max_value=90.0, value=48.8566, format="%.4f")
 longitude = st.number_input("Longitude (Long)", min_value=-180.0, max_value=180.0, value=2.3522, format="%.4f")
 
-# Inputs du Système PV (Tilt & Azimuth)
+# Inputs du Système PV (Orientation & Azimuth)
 st.markdown("---")
 st.subheader("Orientation du panneau PV")
 
-# Note: Azimuth convention for Open-Meteo: 0° South, -90° East, 90° West.
 tilt = st.number_input(
     "Inclinaison [°]",
     min_value=0.0, max_value=90.0, value=35.0, format="%.1f",
@@ -146,13 +146,13 @@ predict_button = st.button("Lancer la Prédiction", type="primary")
 if pv_model and predict_button:
     st.header("Résultats de la Prédiction")
 
-    # Étape 4.1: Récupérer les données
+    # Récupération des données
     with st.spinner(f"Récupération des prévisions météo sur {forecast_days} jours pour ({latitude}, {longitude})..."):
         raw_df = fetch_weather_data(latitude, longitude, tilt, azimuth, forecast_days)
 
     if raw_df is not None:
 
-        # Étape 4.2: Préparation des données (Feature Engineering)
+        # Préparation des données (conversion des dates)
 
         # Convertir la colonne 'time' en datetime et extraire les features temporelles
         raw_df['time'] = pd.to_datetime(raw_df['time'])
@@ -162,7 +162,7 @@ if pv_model and predict_button:
         df_processed['month'] = df_processed['time'].dt.month
         df_processed['day_of_year'] = df_processed['time'].dt.dayofyear
 
-        # Sécurité: s'assurer que l'ordre et le nom des colonnes correspondent à l'entraînement du modèle
+        # S'assurer que l'ordre et le nom des colonnes correspondent à l'entraînement du modèle
         FEATURE_NAMES = [
             'temperature_2m_(°C)', 'relative_humidity_2m_(%)',
             'global_tilted_irradiance_(W/m²)', 'wind_speed_10m_(km/h)',
@@ -174,7 +174,7 @@ if pv_model and predict_button:
 
         st.subheader("Aperçu des Données Météo Récupérées")
 
-        # Créer un DataFrame avec uniquement les variables météo pertinentes pour l'affichage
+        # Créer un DataFrame avec uniquement les variables météo pertinentes pour le plot des variables météos
         # Nous allons exclure 'hour', 'month', 'day_of_year' qui sont pour le modèle
         METEO_VARS_FOR_PLOTTING = [
             'global_tilted_irradiance_(W/m²)',
@@ -204,29 +204,28 @@ if pv_model and predict_button:
             st.area_chart(df_meteo[['cloud_cover_(%)']], use_container_width=True)
             st.line_chart(df_meteo[['wind_speed_10m_(km/h)']], use_container_width=True)
 
-        # Étape 4.3: Faire la Prédiction
+        # Faire la Prédiction
         with st.spinner("Calcul des prédictions de production PV..."):
 
             # Application du modèle
             predictions = pv_model.predict(X)
 
-            # S'assurer que la production est positive (physiquement impossible d'être négative)
+            # S'assurer que la production est positive (physiquement impossible d'être négative et =< 1)
             predictions[predictions < 0] = 0
+            predictions[predictions > 1] = 1
 
             # Ajouter les prédictions au DataFrame
             df_processed['Production_PV_kW'] = predictions
 
-        # Étape 4.4: Affichage des Résultats
+        # Affichage des Résultats
 
-        # 4.4.1 Affichage de la production totale
+        # Affichage de la production totale sur la période considérée
         total_production = df_processed['Production_PV_kW'].sum()
 
+        st.write(f"Production Totale Prévue sur {forecast_days} jours")
+        production_value = f"{total_production:,.2f}".replace(",", " ")
 
-        st.metric(
-                label=f"Production Totale Prévue sur {forecast_days} jours",
-                value=f"{total_production:,.2f} kWh/kWc".replace(",", " ")
-            )
-
+        st.markdown(f"**{production_value} kWh/kWc**")
 
         daily_production = df_processed.set_index('time').resample('D')['Production_PV_kW'].sum()
         if not daily_production.empty:
