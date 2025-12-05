@@ -107,7 +107,7 @@ col_meteo, col_temporelle = st.columns(2)
 
 # Variables météos
 with col_meteo:
-    st.markdown("### ☁️ Variables Météo")
+    st.markdown("### Variables Météo")
     st.markdown("- **Température (°C)**")
     st.markdown("- **Humidité Relative (%)**")
     st.markdown("- **Vitesse du vent à 10m (km/h)**")
@@ -116,7 +116,7 @@ with col_meteo:
 
 # Variables temporelles
 with col_temporelle:
-    st.markdown("### ⏱️ Variables Temporelles")
+    st.markdown("### Variables Temporelles")
     st.markdown("- **Mois**")
     st.markdown("- **Jour de l'année**")
     st.markdown("- **Heure**")
