@@ -45,7 +45,7 @@ MODEL_REGISTRY = [
     },
     {
         "name": "Alice Springs",
-        "path": "modele_lightGBM_Australie.pkl",
+        "path": "modele_lightGBM_AliceSprings.pkl",
         "latitude": -23.7002104,
         "longitude": 133.8806114,
         "location_info": "Modèle de Alice Springs (Australie)",
