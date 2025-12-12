@@ -373,6 +373,10 @@ if pv_model and predict_button:
             predictions[predictions > 1] = 1
             df_processed['Production_PV_kW'] = predictions
 
+            IRRADIANCE_COLUMN = 'global_tilted_irradiance_(W/m²)'
+            irradiance_nulle_mask = X[IRRADIANCE_COLUMN] == 0
+            predictions[irradiance_nulle_mask.values] = 0
+
         # Affichage des Résultats
         total_production = df_processed['Production_PV_kW'].sum()
 
