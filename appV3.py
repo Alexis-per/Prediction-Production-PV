@@ -8,18 +8,17 @@ from math import radians, sin, cos, sqrt, atan2
 
 # --- 1. Définition des Modèles et de leurs Localisations ---
 # Ajoutez ici tous vos modèles (Utrecht, Paris, Tokyo, etc.)
-# Chaque entrée est un dictionnaire avec le chemin du fichier, la latitude et la longitude.
 MODEL_REGISTRY = [
     {
         "name": "Utrecht (NL)",
-        "path": "modele_lightGBM.pkl", # Le chemin de votre modèle actuel
+        "path": "modele_lightGBM.pkl",  # Le chemin de votre modèle actuel
         "latitude": 52.0907,
         "longitude": 5.1214,
         "location_info": "Modèle d'Utrecht (Pays-Bas)",
     },
     {
         "name": "Paris (FR)",
-        "path": "modele_paris_lightGBM.pkl", # Exemple: ce fichier doit exister !
+        "path": "modele_paris_lightGBM.pkl",  # Exemple: ce fichier doit exister !
         "latitude": 48.8566,
         "longitude": 2.3522,
         "location_info": "Modèle de Paris (France)",
@@ -34,6 +33,7 @@ MODEL_REGISTRY = [
     # },
 ]
 
+
 # --- 2. Fonction pour la Distance Géographique (Haversine) ---
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -41,8 +41,7 @@ def haversine(lat1, lon1, lat2, lon2):
     Calcule la distance entre deux points (lat, lon) sur une sphère (Terre).
     Utilise la formule de Haversine. Le résultat est en kilomètres (approx).
     """
-    # Rayon de la Terre en km
-    R = 6371
+    R = 6371  # Rayon de la Terre en km
 
     # Conversion des degrés en radians
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
@@ -52,11 +51,12 @@ def haversine(lat1, lon1, lat2, lon2):
     dlat = lat2 - lat1
 
     # Formule de Haversine
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     distance = R * c
 
     return distance
+
 
 # --- 3. Fonction pour trouver le Modèle le Plus Proche ---
 
@@ -80,38 +80,64 @@ def find_closest_model(user_latitude, user_longitude):
 
     return closest_model, min_distance
 
-# --- 4. Modification de la Fonction de Chargement du Modèle ---
+
+# --- 4. Fonction pour le Géocodage (Adresse -> Lat/Lon) ---
+
+def geocode_address(address):
+    """
+    Convertit une adresse textuelle en coordonnées (latitude, longitude)
+    en utilisant l'API Nominatim (OpenStreetMap).
+    """
+    NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+    params = {
+        "q": address,
+        "format": "json",
+        "limit": 1
+    }
+
+    try:
+        # Définir un agent utilisateur pour être poli avec l'API OSM
+        headers = {'User-Agent': 'PV_Prediction_App/1.0'}
+        response = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if data:
+            # On prend le premier résultat
+            lat = float(data[0].get('lat'))
+            lon = float(data[0].get('lon'))
+            display_name = data[0].get('display_name', address)
+            return lat, lon, display_name
+        else:
+            return None, None, "Adresse non trouvée."
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erreur de connexion à l'API de géocodage (Nominatim) : {e}")
+        return None, None, "Erreur de connexion."
+    except Exception as e:
+        st.error(f"Erreur inattendue lors du géocodage : {e}")
+        return None, None, "Erreur inconnue."
+
+
+# --- 5. Fonction de Chargement du Modèle ---
 
 @st.cache_resource
 def load_model(path):
     """Charge le modèle LightGBM pré-entraîné à partir du chemin spécifié."""
     try:
         model = joblib.load(path)
-        # st.success("Modèle de prédiction chargé avec succès.") # Commenté pour éviter la répétition
         return model
     except FileNotFoundError:
-        # Affiche le message d'erreur et arrête le script si un modèle est manquant
         st.error(f"Erreur : Fichier modèle '{path}' introuvable. Assurez-vous qu'il existe.")
         return None
 
 
-# Configuration application
-st.set_page_config(
-    page_title="Prédiction de Production PV",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Nous allons charger le modèle PLUS TARD, après avoir les coordonnées utilisateur.
-
-# ... Le reste de votre code (fetch_weather_data, interface, etc.) ...
-
+# --- 6. Fonction de Récupération des Données Météo ---
 
 # Utilsiation de l'API de open-meteo.com pour obtenir les données prévisionnelles
 def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
     """
     Récupère les prévisions météorologiques horaires incluant l'irradiation globale inclinée (GTI).
-    (Fonction inchangée)
     """
 
     # Variables météorologiques requises par le modèle
@@ -133,13 +159,12 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
         "forecast_days": days,
         "tilt": tilt,
         "azimuth": azimuth,
-        # Utiliser un modèle précis pour l'Europe (si applicable) ou GFS (Global)
         "models": "best_match"
     }
 
     try:
         response = requests.get(API_URL, params=params)
-        response.raise_for_status()  # Lève une exception pour les codes d'état 4xx ou 5xx
+        response.raise_for_status()
         data = response.json()
 
         if 'hourly' not in data:
@@ -149,7 +174,7 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
         # Créer le DataFrame à partir des données horaires
         df = pd.DataFrame(data['hourly'])
 
-        # Renommer les colonnes pour une meilleure lisibilité (et pour la compatibilité avec le modèle à l'étape suivante)
+        # Renommer les colonnes pour la compatibilité avec le modèle
         df = df.rename(columns={
             'temperature_2m': 'temperature_2m_(°C)',
             'relative_humidity_2m': 'relative_humidity_2m_(%)',
@@ -168,18 +193,29 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
         return None
 
 
-# Interface de l'application
-# Titre en haut du site
-st.title("Système de Prédiction de Production PV")
+# --- 7. Configuration de l'Application Streamlit ---
 
-# Explication de l'application
-st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
-# La ligne suivante sera mise à jour dynamiquement
-st.markdown("Les données météos (historiques et de prévisions qui sont utilisées sur l'appli) proviennent de **open-meteo.com**")
+st.set_page_config(
+    page_title="Prédiction de Production PV",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Configuration de l'état de session par défaut (pour la barre d'adresse)
+if 'latitude' not in st.session_state:
+    st.session_state.latitude = 48.8584  # Default: Paris (Tour Eiffel)
+if 'longitude' not in st.session_state:
+    st.session_state.longitude = 2.2945
+if 'current_address' not in st.session_state:
+    st.session_state.current_address = "Tour Eiffel, Paris, France"
+
+# Interface de l'application
+st.title("Système de Prédiction de Production PV")
+st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM.")
+st.markdown("Les données météos proviennent de **open-meteo.com**.")
 
 # Présentation des variables utilisées dans le modèle
 col_meteo, col_temporelle = st.columns(2)
-
 # Variables météos
 with col_meteo:
     st.markdown("### Variables Météo")
@@ -188,7 +224,6 @@ with col_meteo:
     st.markdown("- **Vitesse du vent à 10m (km/h)**")
     st.markdown("- **Couverture nuageuse (%)**")
     st.markdown("- **Irradiation global orientée (W/m$^2$)**")
-
 # Variables temporelles
 with col_temporelle:
     st.markdown("### Variables Temporelles")
@@ -198,17 +233,43 @@ with col_temporelle:
 
 st.markdown("---")
 
-# Interface utilisateur
+# --- 8. Section Localisation (Adresse) ---
 st.header("Localisation du panneau PV et Sélection de Modèle")
 
-# Inputs de Localisation
-default_lat = 48.8566 # Coordonnées par défaut (ex: Paris)
-default_lon = 2.3522
+address_input = st.text_input(
+    "Rechercher une Adresse / Lieu (Ex: 'Amsterdam', '30 St Mary Axe, London')",
+    value=st.session_state.current_address,
+    key="address_input_widget"
+)
 
-latitude = st.number_input("Latitude (Lat)", min_value=-90.0, max_value=90.0, value=default_lat, format="%.4f")
-longitude = st.number_input("Longitude (Long)", min_value=-180.0, max_value=180.0, value=default_lon, format="%.4f")
+# Le bouton est important pour déclencher le géocodage explicitement
+geocode_button = st.button("Chercher les Coordonnées", type="secondary")
 
-# Affichage du modèle sélectionné
+# Logique de géocodage
+if geocode_button or (address_input != st.session_state.current_address and address_input):
+    # L'utilisateur a cliqué OU l'utilisateur a modifié l'adresse et le champ n'est pas vide
+    with st.spinner(f"Recherche de '{address_input}'..."):
+        new_lat, new_lon, found_address = geocode_address(address_input)
+
+        if new_lat is not None and new_lon is not None:
+            # Mise à jour des coordonnées et de l'adresse dans l'état de session
+            st.session_state.latitude = new_lat
+            st.session_state.longitude = new_lon
+            st.session_state.current_address = found_address
+            st.success(f"Adresse trouvée: **{found_address}**")
+
+        elif address_input:
+            st.error(f"Impossible de trouver les coordonnées pour : {address_input}")
+
+# Utilisation des coordonnées stockées dans session_state
+latitude = st.session_state.latitude
+longitude = st.session_state.longitude
+
+# Affichage des coordonnées trouvées et de la carte
+st.markdown(f"**Coordonnées Actuelles :** Lat **{latitude:.4f}**, Long **{longitude:.4f}**")
+st.map(pd.DataFrame({'lat': [latitude], 'lon': [longitude]}), zoom=10)
+
+# Sélection du Modèle le plus proche
 closest_model_info, distance = find_closest_model(latitude, longitude)
 
 st.info(
@@ -217,41 +278,43 @@ st.info(
     f"de votre localisation ({closest_model_info['latitude']:.4f}, {closest_model_info['longitude']:.4f})."
 )
 
-# Inputs du Système PV (Orientation & Azimuth)
+# --- 9. Inputs du Système PV et Lancement ---
+
 st.markdown("---")
 st.subheader("Orientation du panneau PV")
 
-tilt = st.number_input(
-    "Inclinaison [°]",
-    min_value=0.0, max_value=90.0, value=35.0, format="%.1f",
-    help="Angle du panneau par rapport à l'horizontale (0°=plat, 90°=vertical)."
-)
+col_tilt, col_azimuth = st.columns(2)
 
-azimuth = st.number_input(
-    "Azimut (Orientation) [°]",
-    min_value=-180.0, max_value=180.0, value=0.0, format="%.1f",
-    help="Orientation des panneaux: 0°=Sud, 90°=Ouest, -90°=Est, ±180°=Nord (selon la convention Open-Meteo)."
-)
+with col_tilt:
+    tilt = st.number_input(
+        "Inclinaison [°]",
+        min_value=0.0, max_value=90.0, value=35.0, format="%.1f",
+        help="Angle du panneau par rapport à l'horizontale (0°=plat, 90°=vertical)."
+    )
+
+with col_azimuth:
+    azimuth = st.number_input(
+        "Azimut (Orientation) [°]",
+        min_value=-180.0, max_value=180.0, value=0.0, format="%.1f",
+        help="Orientation des panneaux: 0°=Sud, 90°=Ouest, -90°=Est, ±180°=Nord (selon la convention Open-Meteo)."
+    )
 
 st.markdown("---")
 forecast_days = st.slider("Jours de Prévision", 1, 16, 7)
 
 predict_button = st.button("Lancer la Prédiction", type="primary")
 
-# Application du modèle aux données
+# --- 10. Logique de Prédiction ---
 
-# Charger le modèle UNIQUEMENT si l'utilisateur clique sur le bouton,
-# en utilisant le chemin du modèle le plus proche trouvé.
+pv_model = None
 if predict_button:
+    # Charger le modèle UNIQUEMENT si l'utilisateur clique sur le bouton
     pv_model = load_model(closest_model_info['path'])
-else:
-    pv_model = None
 
 if pv_model and predict_button:
     st.header("Résultats de la Prédiction")
 
-    # Afficher l'information sur le modèle utilisé dans la section résultat
-    st.caption(f"**Modèle utilisé pour cette prédiction:** {closest_model_info['location_info']}")
+    st.caption(f"**Modèle utilisé:** {closest_model_info['location_info']}")
 
     # Récupération des données
     with st.spinner(f"Récupération des prévisions météo sur {forecast_days} jours pour ({latitude}, {longitude})..."):
@@ -259,10 +322,7 @@ if pv_model and predict_button:
 
     if raw_df is not None:
 
-        # Préparation des données (conversion des dates)
-        # ... (le reste du code de préparation des données et de prédiction reste inchangé) ...
-
-        # Convertir la colonne 'time' en datetime et extraire les features temporelles
+        # Préparation des données pour le modèle
         raw_df['time'] = pd.to_datetime(raw_df['time'])
         df_processed = raw_df.copy()
 
@@ -270,7 +330,6 @@ if pv_model and predict_button:
         df_processed['month'] = df_processed['time'].dt.month
         df_processed['day_of_year'] = df_processed['time'].dt.dayofyear
 
-        # S'assurer que l'ordre et le nom des colonnes correspondent à l'entraînement du modèle
         FEATURE_NAMES = [
             'temperature_2m_(°C)', 'relative_humidity_2m_(%)',
             'global_tilted_irradiance_(W/m²)', 'wind_speed_10m_(km/h)',
@@ -280,10 +339,9 @@ if pv_model and predict_button:
         # Filtrer et réorganiser les colonnes
         X = df_processed[FEATURE_NAMES]
 
+        # --- Visualisation des Données Météo ---
         st.subheader("Aperçu des Données Météo Récupérées")
 
-        # Créer un DataFrame avec uniquement les variables météo pertinentes pour le plot des variables météos
-        # Nous allons exclure 'hour', 'month', 'day_of_year' qui sont pour le modèle
         METEO_VARS_FOR_PLOTTING = [
             'global_tilted_irradiance_(W/m²)',
             'temperature_2m_(°C)',
@@ -294,7 +352,6 @@ if pv_model and predict_button:
 
         df_meteo = df_processed.set_index('time')[METEO_VARS_FOR_PLOTTING]
 
-        # Utilisation de st.tabs pour organiser l'affichage des graphiques
         tab_gti, tab_temp, tab_cloud = st.tabs(
             ["Irradiation (GTI)", "Température & Humidité", "Couverture Nuageuse & Vent"])
 
@@ -308,47 +365,39 @@ if pv_model and predict_button:
 
         with tab_cloud:
             st.markdown("##### Couverture Nuageuse et Vitesse du Vent")
-            # Notez que st.area_chart est souvent visuellement agréable pour la couverture nuageuse
             st.area_chart(df_meteo[['cloud_cover_(%)']], use_container_width=True)
             st.line_chart(df_meteo[['wind_speed_10m_(km/h)']], use_container_width=True)
 
-        # Faire la Prédiction
+        # --- Faire la Prédiction ---
         with st.spinner("Calcul des prédictions de production PV..."):
 
-            # Application du modèle
             predictions = pv_model.predict(X)
 
-            # S'assurer que la production est positive (physiquement impossible d'être négative et =< 1)
+            # S'assurer que la production est positive et plafonnée à 1 kW/kWc
             predictions[predictions < 0] = 0
             predictions[predictions > 1] = 1
 
-            # Ajouter les prédictions au DataFrame
             df_processed['Production_PV_kW'] = predictions
 
-        # Affichage des Résultats
-
-        # Affichage de la production totale sur la période considérée
+        # --- Affichage des Résultats ---
         total_production = df_processed['Production_PV_kW'].sum()
 
-
         st.metric(
-                label=f"Production Totale Prévue sur {forecast_days} jours",
-                value=f"{total_production:,.2f} kWh/kWc".replace(",", " ")
-            )
-
+            label=f"Production Totale Prévue sur {forecast_days} jours",
+            value=f"{total_production:,.2f} kWh/kWc".replace(",", " ")
+        )
 
         daily_production = df_processed.set_index('time').resample('D')['Production_PV_kW'].sum()
         if not daily_production.empty:
-                st.subheader("Répartition Journalière (kWh/kWc)")
-                st.dataframe(daily_production.to_frame(name='kWh/kWc par jour').style.format("{:,.2f}"))
+            st.subheader("Répartition Journalière (kWh/kWc)")
+            st.dataframe(daily_production.to_frame(name='kWh/kWc par jour').style.format("{:,.2f}"))
 
-        # Affichage graphique de la production prévue
         st.subheader("Prévision Horaire de Production PV (kW/kwc)")
         df_chart = df_processed.set_index('time')[['Production_PV_kW']]
 
         st.line_chart(df_chart, use_container_width=True)
 
-        st.caption(f"Prévision pour Lat: {latitude}, Long: {longitude}, Inclinaison: {tilt}°, Azimut: {azimuth}°.")
+        st.caption(f"Prévision pour {st.session_state.current_address}, Inclinaison: {tilt}°, Azimut: {azimuth}°.")
 
     else:
         st.warning("Impossible de procéder à la prédiction sans données météo valides.")
