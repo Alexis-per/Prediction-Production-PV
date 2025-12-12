@@ -6,79 +6,104 @@ import numpy as np
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 
+# NOUVELLES LIBRAIRIES NÉCESSAIRES POUR LA CARTE INTERACTIVE ET LES ICÔNES
+from streamlit_folium import st_folium
+import folium
+from folium.plugins import Draw  # Assurez-vous d'importer Draw
+
+# --- CONFIGURATION DE L'ICÔNE D'IMAGE ---
+# REMPLACER 'solaire_logo.png' par le nom de votre fichier image.
+# L'image doit être dans le même répertoire que votre script Streamlit.
+MODEL_ICON_URL = "solaire_logo.png"
+ICON_SIZE = (30, 30)  # Taille de l'icône en pixels (largeur, hauteur)
+
+# Création de l'objet CustomIcon une seule fois
+try:
+    CUSTOM_SOLAR_ICON = folium.CustomIcon(
+        icon_image=MODEL_ICON_URL,
+        icon_size=ICON_SIZE,
+        icon_anchor=(ICON_SIZE[0] // 2, ICON_SIZE[1])  # Ancre le bas de l'icône
+    )
+    # st.success(f"Icône personnalisée chargée à partir de {MODEL_ICON_URL}.")
+except FileNotFoundError:
+    # Fallback si l'image n'est pas trouvée
+    st.error(f"ATTENTION : Le fichier icône '{MODEL_ICON_URL}' est introuvable. Revert à l'icône par défaut.")
+    CUSTOM_SOLAR_ICON = folium.Icon(color='blue', icon='solar-panel', prefix='fa')
+
 # --- 1. Définition des Modèles et de leurs Localisations ---
-# Ajoutez ici tous vos modèles (Utrecht, Paris, Tokyo, etc.)
-# Chaque entrée est un dictionnaire avec le chemin du fichier, la latitude et la longitude.
 MODEL_REGISTRY = [
+    # Utrecht
     {
-        "name": "Utrecht (NL)",
-        "path": "modele_lightGBM.pkl", # Le chemin de votre modèle actuel
-        "latitude": 52.0907,
-        "longitude": 5.1214,
+        "name": "Utrecht",
+        "path": "modele_lightGBM.pkl",
+        "latitude": 51.9701,
+        "longitude": 5.3217,
         "location_info": "Modèle d'Utrecht (Pays-Bas)",
     },
+    # Lisbon1
     {
-        "name": "Paris (FR)",
-        "path": "modele_paris_lightGBM.pkl", # Exemple: ce fichier doit exister !
-        "latitude": 48.8566,
-        "longitude": 2.3522,
-        "location_info": "Modèle de Paris (France)",
+        "name": "Lisbon1",
+        "path": "modele_lightGBM_Lisbon1.pkl",
+        "latitude": 38.728,
+        "longitude": -9.138,
+        "location_info": "Modèle de Lisbonne (Portugal)",
     },
-    # Ajoutez d'autres modèles ici si vous les avez:
-    # {
-    #     "name": "Localité X",
-    #     "path": "modele_X.pkl",
-    #     "latitude": X.XXX,
-    #     "longitude": Y.YYY,
-    #     "location_info": "Modèle de Localité X",
-    # },
+    # Faro
+    {
+        "name": "Faro",
+        "path": "modele_lightGBM_Faro.pkl",
+        "latitude": 37.031,
+        "longitude": -7.893,
+        "location_info": "Modèle de Faro (Portugal)",
+    },
+    # Braga
+    {
+        "name": "Braga",
+        "path": "modele_lightGBM_Braga.pkl",
+        "latitude": 41.493,
+        "longitude": -8.496,
+        "location_info": "Modèle de Braga (Portugal)",
+    },
+    # Setubal
+    {
+        "name": "Setubal",
+        "path": "modele_lightGBM_Setubal.pkl",
+        "latitude": 38.577,
+        "longitude": -8.872,
+        "location_info": "Modèle de Setubal (Portugal)",
+    },
 ]
+
 
 # --- 2. Fonction pour la Distance Géographique (Haversine) ---
 
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    Calcule la distance entre deux points (lat, lon) sur une sphère (Terre).
-    Utilise la formule de Haversine. Le résultat est en kilomètres (approx).
-    """
-    # Rayon de la Terre en km
+    """Calcule la distance Haversine en km."""
     R = 6371
-
-    # Conversion des degrés en radians
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-
-    # Différences
     dlon = lon2 - lon1
     dlat = lat2 - lat1
-
-    # Formule de Haversine
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     distance = R * c
-
     return distance
+
 
 # --- 3. Fonction pour trouver le Modèle le Plus Proche ---
 
 def find_closest_model(user_latitude, user_longitude):
-    """
-    Trouve le modèle dans le registre qui est géographiquement le plus proche
-    des coordonnées fournies.
-    """
+    """Trouve le modèle le plus proche géographiquement."""
     min_distance = float('inf')
     closest_model = None
 
     for model_data in MODEL_REGISTRY:
-        lat = model_data['latitude']
-        lon = model_data['longitude']
-
-        distance = haversine(user_latitude, user_longitude, lat, lon)
-
+        distance = haversine(user_latitude, user_longitude, model_data['latitude'], model_data['longitude'])
         if distance < min_distance:
             min_distance = distance
             closest_model = model_data
 
     return closest_model, min_distance
+
 
 # --- 4. Modification de la Fonction de Chargement du Modèle ---
 
@@ -87,10 +112,8 @@ def load_model(path):
     """Charge le modèle LightGBM pré-entraîné à partir du chemin spécifié."""
     try:
         model = joblib.load(path)
-        # st.success("Modèle de prédiction chargé avec succès.") # Commenté pour éviter la répétition
         return model
     except FileNotFoundError:
-        # Affiche le message d'erreur et arrête le script si un modèle est manquant
         st.error(f"Erreur : Fichier modèle '{path}' introuvable. Assurez-vous qu'il existe.")
         return None
 
@@ -102,54 +125,32 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Nous allons charger le modèle PLUS TARD, après avoir les coordonnées utilisateur.
-
-# ... Le reste de votre code (fetch_weather_data, interface, etc.) ...
-
 
 # Utilsiation de l'API de open-meteo.com pour obtenir les données prévisionnelles
 def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
-    """
-    Récupère les prévisions météorologiques horaires incluant l'irradiation globale inclinée (GTI).
-    (Fonction inchangée)
-    """
-
-    # Variables météorologiques requises par le modèle
+    """Récupère les prévisions météorologiques horaires."""
     hourly_vars = [
-        "temperature_2m",
-        "relative_humidity_2m",
-        "wind_speed_10m",
-        "cloud_cover",
-        "global_tilted_irradiance"  # Le plus important pour le PV
+        "temperature_2m", "relative_humidity_2m", "wind_speed_10m",
+        "cloud_cover", "global_tilted_irradiance"
     ]
-
     API_URL = "https://api.open-meteo.com/v1/forecast"
-
     params = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "hourly": ",".join(hourly_vars),
-        "timezone": "auto",
-        "forecast_days": days,
-        "tilt": tilt,
-        "azimuth": azimuth,
-        # Utiliser un modèle précis pour l'Europe (si applicable) ou GFS (Global)
+        "latitude": latitude, "longitude": longitude,
+        "hourly": ",".join(hourly_vars), "timezone": "auto",
+        "forecast_days": days, "tilt": tilt, "azimuth": azimuth,
         "models": "best_match"
     }
 
     try:
         response = requests.get(API_URL, params=params)
-        response.raise_for_status()  # Lève une exception pour les codes d'état 4xx ou 5xx
+        response.raise_for_status()
         data = response.json()
 
         if 'hourly' not in data:
             st.warning("Aucune donnée horaire ('hourly') trouvée dans la réponse de l'API.")
             return None
 
-        # Créer le DataFrame à partir des données horaires
         df = pd.DataFrame(data['hourly'])
-
-        # Renommer les colonnes pour une meilleure lisibilité (et pour la compatibilité avec le modèle à l'étape suivante)
         df = df.rename(columns={
             'temperature_2m': 'temperature_2m_(°C)',
             'relative_humidity_2m': 'relative_humidity_2m_(%)',
@@ -157,7 +158,6 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
             'cloud_cover': 'cloud_cover_(%)',
             'global_tilted_irradiance': 'global_tilted_irradiance_(W/m²)'
         })
-
         return df
 
     except requests.exceptions.RequestException as e:
@@ -169,50 +169,135 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
 
 
 # Interface de l'application
-# Titre en haut du site
 st.title("Système de Prédiction de Production PV")
-
-# Explication de l'application
 st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
-# La ligne suivante sera mise à jour dynamiquement
-st.markdown("Les données météos (historiques et de prévisions qui sont utilisées sur l'appli) proviennent de **open-meteo.com**")
+st.markdown(
+    "Les données météos (historiques et de prévisions qui sont utilisées sur l'appli) proviennent de **open-meteo.com**")
 
-# Présentation des variables utilisées dans le modèle
+# Présentation des variables
 col_meteo, col_temporelle = st.columns(2)
-
-# Variables météos
 with col_meteo:
     st.markdown("### Variables Météo")
-    st.markdown("- **Température (°C)**")
-    st.markdown("- **Humidité Relative (%)**")
-    st.markdown("- **Vitesse du vent à 10m (km/h)**")
-    st.markdown("- **Couverture nuageuse (%)**")
-    st.markdown("- **Irradiation global orientée (W/m$^2$)**")
-
-# Variables temporelles
+    st.markdown(
+        "- **Température (°C)**, **Humidité Relative (%)**, **Vitesse du vent à 10m (km/h)**, **Couverture nuageuse (%)**, **Irradiation global orientée (W/m$^2$)**")
 with col_temporelle:
     st.markdown("### Variables Temporelles")
-    st.markdown("- **Mois**")
-    st.markdown("- **Jour de l'année**")
-    st.markdown("- **Heure**")
+    st.markdown("- **Mois**, **Jour de l'année**, **Heure**")
 
 st.markdown("---")
-
-# Interface utilisateur
 st.header("Localisation du panneau PV et Sélection de Modèle")
 
-# Inputs de Localisation
-default_lat = 48.8566 # Coordonnées par défaut (ex: Paris)
-default_lon = 2.3522
+# Initialisation des variables de session pour la persistance des inputs
+if 'latitude' not in st.session_state:
+    st.session_state.latitude = 51.9701  # Coordonnées par défaut (Utrecht)
+if 'longitude' not in st.session_state:
+    st.session_state.longitude = 5.3217
 
-latitude = st.number_input("Latitude (Lat)", min_value=-90.0, max_value=90.0, value=default_lat, format="%.4f")
-longitude = st.number_input("Longitude (Long)", min_value=-180.0, max_value=180.0, value=default_lon, format="%.4f")
+# --- Section Carte interactive et inputs ---
+col_map, col_input = st.columns([3, 1])
 
-# Affichage du modèle sélectionné
-closest_model_info, distance = find_closest_model(latitude, longitude)
+with col_input:
+    st.subheader("Saisie Manuelle")
+
+    # Les entrées manuelles sont liées directement aux variables de session
+    new_lat = st.number_input(
+        "Latitude (Lat)",
+        min_value=-90.0, max_value=90.0,
+        value=st.session_state.latitude,
+        format="%.4f",
+        key="manual_lat"
+    )
+    new_lon = st.number_input(
+        "Longitude (Long)",
+        min_value=-180.0, max_value=180.0,
+        value=st.session_state.longitude,
+        format="%.4f",
+        key="manual_lon"
+    )
+
+    # Mise à jour des variables de session après l'input manuel
+    st.session_state.latitude = new_lat
+    st.session_state.longitude = new_lon
+
+    st.markdown(
+        """
+        *Conseil : Modifiez ces valeurs, ou utilisez 
+        l'outil marqueur sur la carte pour choisir un point.*
+        """
+    )
+
+with col_map:
+    st.subheader("Sélection sur la Carte")
+
+    # 1. Création de la carte Folium centrée sur le point actuel de l'utilisateur
+    m = folium.Map(
+        location=[st.session_state.latitude, st.session_state.longitude],
+        zoom_start=7,
+        tiles="cartodbpositron"
+    )
+
+    # 2. Ajout des marqueurs pour les emplacements des modèles (Icône d'Image Personnalisée)
+    for model in MODEL_REGISTRY:
+        folium.Marker(
+            [model['latitude'], model['longitude']],
+            tooltip=f"{model['name']} (Modèle disponible)",
+            # UTILISATION DE L'ICÔNE D'IMAGE CUSTOMISÉE
+            icon=CUSTOM_SOLAR_ICON
+        ).add_to(m)
+
+    # 3. Ajout du marqueur de l'utilisateur (Point Rouge)
+    folium.CircleMarker(
+        [st.session_state.latitude, st.session_state.longitude],
+        radius=8,
+        color='red',
+        fill=True,
+        fill_color='red',
+        fill_opacity=1.0,
+        tooltip="Votre Emplacement Actuel"
+    ).add_to(m)
+
+    # 4. Ajout du plugin pour cliquer et dessiner (pour la mise à jour des coordonnées)
+    draw = Draw(
+        export=False,
+        position='topleft',
+        draw_options={
+            'polyline': False, 'polygon': False, 'circle': False,
+            'circlemarker': False, 'rectangle': False,
+            'marker': {'icon': folium.Icon(color='red', icon='map-pin', prefix='fa')}
+        },
+        edit_options={'edit': False, 'remove': True}
+    )
+    draw.add_to(m)
+
+    # 5. Rendu de la carte et récupération de l'état
+    map_data = st_folium(m, width=700, height=450, key="folium_map", return_on_hover=False)
+
+    st.caption(f"🔴 : Votre emplacement. [Image de Panneau Solaire] : Emplacements des modèles disponibles.")
+    st.caption("Utilisez l'icône de punaise (top-left) pour placer un nouveau point.")
+
+# --- Logique de mise à jour des coordonnées à partir du clic (Draw) ---
+# Si l'utilisateur a dessiné/placé un nouveau point
+if map_data and map_data.get("last_active_drawing"):
+    drawing_type = map_data["last_active_drawing"].get("geometry", {}).get("type")
+
+    if drawing_type == "Point":
+        coords = map_data["last_active_drawing"]["geometry"]["coordinates"]
+
+        # Folium retourne [longitude, latitude], nous devons les inverser
+        new_lon_from_map = coords[0]
+        new_lat_from_map = coords[1]
+
+        # Mettre à jour les variables de session, ce qui rafraîchira l'interface
+        st.session_state.latitude = new_lat_from_map
+        st.session_state.longitude = new_lon_from_map
+        st.rerun()
+    # --- FIN Logique de mise à jour ---
+
+# Affichage du modèle sélectionné (utilise les coordonnées de session)
+closest_model_info, distance = find_closest_model(st.session_state.latitude, st.session_state.longitude)
 
 st.info(
-    f"ℹ️ **Modèle Sélectionné:** **{closest_model_info['name']}**.\n\n"
+    f"**Modèle Sélectionné:** **{closest_model_info['name']}**.\n\n"
     f"Ce modèle est le plus proche géographiquement (à **{distance:,.0f} km**) "
     f"de votre localisation ({closest_model_info['latitude']:.4f}, {closest_model_info['longitude']:.4f})."
 )
@@ -254,15 +339,13 @@ if pv_model and predict_button:
     st.caption(f"**Modèle utilisé pour cette prédiction:** {closest_model_info['location_info']}")
 
     # Récupération des données
-    with st.spinner(f"Récupération des prévisions météo sur {forecast_days} jours pour ({latitude}, {longitude})..."):
-        raw_df = fetch_weather_data(latitude, longitude, tilt, azimuth, forecast_days)
+    with st.spinner(
+            f"Récupération des prévisions météo sur {forecast_days} jours pour ({st.session_state.latitude}, {st.session_state.longitude})..."):
+        raw_df = fetch_weather_data(st.session_state.latitude, st.session_state.longitude, tilt, azimuth, forecast_days)
 
     if raw_df is not None:
 
         # Préparation des données (conversion des dates)
-        # ... (le reste du code de préparation des données et de prédiction reste inchangé) ...
-
-        # Convertir la colonne 'time' en datetime et extraire les features temporelles
         raw_df['time'] = pd.to_datetime(raw_df['time'])
         df_processed = raw_df.copy()
 
@@ -283,7 +366,6 @@ if pv_model and predict_button:
         st.subheader("Aperçu des Données Météo Récupérées")
 
         # Créer un DataFrame avec uniquement les variables météo pertinentes pour le plot des variables météos
-        # Nous allons exclure 'hour', 'month', 'day_of_year' qui sont pour le modèle
         METEO_VARS_FOR_PLOTTING = [
             'global_tilted_irradiance_(W/m²)',
             'temperature_2m_(°C)',
@@ -308,7 +390,6 @@ if pv_model and predict_button:
 
         with tab_cloud:
             st.markdown("##### Couverture Nuageuse et Vitesse du Vent")
-            # Notez que st.area_chart est souvent visuellement agréable pour la couverture nuageuse
             st.area_chart(df_meteo[['cloud_cover_(%)']], use_container_width=True)
             st.line_chart(df_meteo[['wind_speed_10m_(km/h)']], use_container_width=True)
 
@@ -326,21 +407,17 @@ if pv_model and predict_button:
             df_processed['Production_PV_kW'] = predictions
 
         # Affichage des Résultats
-
-        # Affichage de la production totale sur la période considérée
         total_production = df_processed['Production_PV_kW'].sum()
 
-
         st.metric(
-                label=f"Production Totale Prévue sur {forecast_days} jours",
-                value=f"{total_production:,.2f} kWh/kWc".replace(",", " ")
-            )
-
+            label=f"Production Totale Prévue sur {forecast_days} jours",
+            value=f"{total_production:,.2f} kWh/kWc".replace(",", " ")
+        )
 
         daily_production = df_processed.set_index('time').resample('D')['Production_PV_kW'].sum()
         if not daily_production.empty:
-                st.subheader("Répartition Journalière (kWh/kWc)")
-                st.dataframe(daily_production.to_frame(name='kWh/kWc par jour').style.format("{:,.2f}"))
+            st.subheader("Répartition Journalière (kWh/kWc)")
+            st.dataframe(daily_production.to_frame(name='kWh/kWc par jour').style.format("{:,.2f}"))
 
         # Affichage graphique de la production prévue
         st.subheader("Prévision Horaire de Production PV (kW/kwc)")
@@ -348,7 +425,8 @@ if pv_model and predict_button:
 
         st.line_chart(df_chart, use_container_width=True)
 
-        st.caption(f"Prévision pour Lat: {latitude}, Long: {longitude}, Inclinaison: {tilt}°, Azimut: {azimuth}°.")
+        st.caption(
+            f"Prévision pour Lat: {st.session_state.latitude}, Long: {st.session_state.longitude}, Inclinaison: {tilt}°, Azimut: {azimuth}°.")
 
     else:
         st.warning("Impossible de procéder à la prédiction sans données météo valides.")
