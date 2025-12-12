@@ -10,7 +10,7 @@ from math import radians, sin, cos, sqrt, atan2
 from streamlit_folium import st_folium
 import folium
 from folium.plugins import Draw
-import json  # Nécessaire pour analyser le résultat du géocodage
+import json  # Nécessaire pour analyser le résultat du géocodage test
 
 # --- CONFIGURATION DE L'ICÔNE D'IMAGE ---
 MODEL_ICON_URL = "istockphoto-1455686956-612x612.jpg"
