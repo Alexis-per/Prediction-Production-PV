@@ -6,13 +6,16 @@ import numpy as np
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 
+# NOUVELLES LIBRAIRIES NÉCESSAIRES POUR LA CARTE INTERACTIVE ET LES ICÔNES
+from streamlit_folium import st_folium
+import folium
+
 # --- 1. Définition des Modèles et de leurs Localisations ---
-# Ajoutez ici tous vos modèles (Utrecht, Lisbon, etc.)
 MODEL_REGISTRY = [
     # Utrecht
     {
         "name": "Utrecht",
-        "path": "modele_lightGBM.pkl",  # Le chemin de votre modèle actuel
+        "path": "modele_lightGBM.pkl",
         "latitude": 51.9701,
         "longitude": 5.3217,
         "location_info": "Modèle d'Utrecht (Pays-Bas)",
@@ -20,7 +23,7 @@ MODEL_REGISTRY = [
     # Lisbon1
     {
         "name": "Lisbon1",
-        "path": "modele_lightGBM_Lisbon1.pkl",  # Exemple: ce fichier doit exister !
+        "path": "modele_lightGBM_Lisbon1.pkl",
         "latitude": 38.728,
         "longitude": -9.138,
         "location_info": "Modèle de Lisbonne (Portugal)",
@@ -28,7 +31,7 @@ MODEL_REGISTRY = [
     # Faro
     {
         "name": "Faro",
-        "path": "modele_lightGBM_Faro.pkl",  # Exemple: ce fichier doit exister !
+        "path": "modele_lightGBM_Faro.pkl",
         "latitude": 37.031,
         "longitude": -7.893,
         "location_info": "Modèle de Faro (Portugal)",
@@ -36,7 +39,7 @@ MODEL_REGISTRY = [
     # Braga
     {
         "name": "Braga",
-        "path": "modele_lightGBM_Braga.pkl",  # Exemple: ce fichier doit exister !
+        "path": "modele_lightGBM_Braga.pkl",
         "latitude": 41.493,
         "longitude": -8.496,
         "location_info": "Modèle de Braga (Portugal)",
@@ -44,7 +47,7 @@ MODEL_REGISTRY = [
     # Setubal
     {
         "name": "Setubal",
-        "path": "modele_lightGBM_Setubal.pkl",  # Exemple: ce fichier doit exister !
+        "path": "modele_lightGBM_Setubal.pkl",
         "latitude": 38.577,
         "longitude": -8.872,
         "location_info": "Modèle de Setubal (Portugal)",
@@ -55,44 +58,26 @@ MODEL_REGISTRY = [
 # --- 2. Fonction pour la Distance Géographique (Haversine) ---
 
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    Calcule la distance entre deux points (lat, lon) sur une sphère (Terre).
-    Utilise la formule de Haversine. Le résultat est en kilomètres (approx).
-    """
-    # Rayon de la Terre en km
+    """Calcule la distance Haversine en km."""
     R = 6371
-
-    # Conversion des degrés en radians
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-
-    # Différences
     dlon = lon2 - lon1
     dlat = lat2 - lat1
-
-    # Formule de Haversine
     a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     distance = R * c
-
     return distance
 
 
 # --- 3. Fonction pour trouver le Modèle le Plus Proche ---
 
 def find_closest_model(user_latitude, user_longitude):
-    """
-    Trouve le modèle dans le registre qui est géographiquement le plus proche
-    des coordonnées fournies.
-    """
+    """Trouve le modèle le plus proche géographiquement."""
     min_distance = float('inf')
     closest_model = None
 
     for model_data in MODEL_REGISTRY:
-        lat = model_data['latitude']
-        lon = model_data['longitude']
-
-        distance = haversine(user_latitude, user_longitude, lat, lon)
-
+        distance = haversine(user_latitude, user_longitude, model_data['latitude'], model_data['longitude'])
         if distance < min_distance:
             min_distance = distance
             closest_model = model_data
@@ -123,46 +108,29 @@ st.set_page_config(
 
 # Utilsiation de l'API de open-meteo.com pour obtenir les données prévisionnelles
 def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
-    """
-    Récupère les prévisions météorologiques horaires incluant l'irradiation globale inclinée (GTI).
-    (Fonction inchangée)
-    """
-
-    # Variables météorologiques requises par le modèle
+    """Récupère les prévisions météorologiques horaires."""
     hourly_vars = [
-        "temperature_2m",
-        "relative_humidity_2m",
-        "wind_speed_10m",
-        "cloud_cover",
-        "global_tilted_irradiance"  # Le plus important pour le PV
+        "temperature_2m", "relative_humidity_2m", "wind_speed_10m",
+        "cloud_cover", "global_tilted_irradiance"
     ]
-
     API_URL = "https://api.open-meteo.com/v1/forecast"
-
     params = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "hourly": ",".join(hourly_vars),
-        "timezone": "auto",
-        "forecast_days": days,
-        "tilt": tilt,
-        "azimuth": azimuth,
+        "latitude": latitude, "longitude": longitude,
+        "hourly": ",".join(hourly_vars), "timezone": "auto",
+        "forecast_days": days, "tilt": tilt, "azimuth": azimuth,
         "models": "best_match"
     }
 
     try:
         response = requests.get(API_URL, params=params)
-        response.raise_for_status()  # Lève une exception pour les codes d'état 4xx ou 5xx
+        response.raise_for_status()
         data = response.json()
 
         if 'hourly' not in data:
             st.warning("Aucune donnée horaire ('hourly') trouvée dans la réponse de l'API.")
             return None
 
-        # Créer le DataFrame à partir des données horaires
         df = pd.DataFrame(data['hourly'])
-
-        # Renommer les colonnes pour une meilleure lisibilité (et pour la compatibilité avec le modèle à l'étape suivante)
         df = df.rename(columns={
             'temperature_2m': 'temperature_2m_(°C)',
             'relative_humidity_2m': 'relative_humidity_2m_(%)',
@@ -170,7 +138,6 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
             'cloud_cover': 'cloud_cover_(%)',
             'global_tilted_irradiance': 'global_tilted_irradiance_(W/m²)'
         })
-
         return df
 
     except requests.exceptions.RequestException as e:
@@ -182,43 +149,23 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
 
 
 # Interface de l'application
-# Titre en haut du site
 st.title("Système de Prédiction de Production PV")
-
-# Explication de l'application
 st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
 st.markdown(
     "Les données météos (historiques et de prévisions qui sont utilisées sur l'appli) proviennent de **open-meteo.com**")
 
-# Présentation des variables utilisées dans le modèle
+# Présentation des variables
 col_meteo, col_temporelle = st.columns(2)
-
-# Variables météos
 with col_meteo:
     st.markdown("### Variables Météo")
-    st.markdown("- **Température (°C)**")
-    st.markdown("- **Humidité Relative (%)**")
-    st.markdown("- **Vitesse du vent à 10m (km/h)**")
-    st.markdown("- **Couverture nuageuse (%)**")
-    st.markdown("- **Irradiation global orientée (W/m$^2$)**")
-
-# Variables temporelles
+    st.markdown(
+        "- **Température (°C)**, **Humidité Relative (%)**, **Vitesse du vent à 10m (km/h)**, **Couverture nuageuse (%)**, **Irradiation global orientée (W/m$^2$)**")
 with col_temporelle:
     st.markdown("### Variables Temporelles")
-    st.markdown("- **Mois**")
-    st.markdown("- **Jour de l'année**")
-    st.markdown("- **Heure**")
+    st.markdown("- **Mois**, **Jour de l'année**, **Heure**")
 
 st.markdown("---")
-
-# Interface utilisateur pour la localisation
 st.header("Localisation du panneau PV et Sélection de Modèle")
-
-# --- NOUVEAUTÉ : Affichage de la carte et des inputs ---
-col_map, col_input = st.columns([3, 1])
-
-default_lat = 40.0  # Centre de la carte initiale (région Portugal/NL)
-default_lon = 0.0
 
 # Initialisation des variables de session pour la persistance des inputs
 if 'latitude' not in st.session_state:
@@ -226,17 +173,21 @@ if 'latitude' not in st.session_state:
 if 'longitude' not in st.session_state:
     st.session_state.longitude = 5.3217
 
-# 1. Inputs manuels (dans la colonne de droite)
+# --- NOUVEAUTÉ : Carte interactive et inputs ---
+col_map, col_input = st.columns([3, 1])
+
 with col_input:
     st.subheader("Saisie Manuelle")
-    st.session_state.latitude = st.number_input(
+
+    # Les entrées manuelles sont liées directement aux variables de session
+    new_lat = st.number_input(
         "Latitude (Lat)",
         min_value=-90.0, max_value=90.0,
         value=st.session_state.latitude,
         format="%.4f",
         key="manual_lat"
     )
-    st.session_state.longitude = st.number_input(
+    new_lon = st.number_input(
         "Longitude (Long)",
         min_value=-180.0, max_value=180.0,
         value=st.session_state.longitude,
@@ -244,45 +195,88 @@ with col_input:
         key="manual_lon"
     )
 
+    # Mise à jour des variables de session après l'input manuel
+    st.session_state.latitude = new_lat
+    st.session_state.longitude = new_lon
+
     st.markdown(
         """
-        *Conseil : Utilisez ces champs pour ajuster 
-        précisément votre position, en vous aidant 
-        de la carte à gauche.*
+        *Conseil : Modifiez ces valeurs, ou utilisez 
+        l'outil marqueur sur la carte pour choisir un point.*
         """
     )
 
-# 2. Préparation des données pour la carte (dans la colonne de gauche)
-# Créer le DataFrame du point utilisateur
-user_point = pd.DataFrame({
-    'lat': [st.session_state.latitude],
-    'lon': [st.session_state.longitude],
-    'type': ['Votre Emplacement']
-})
-
-# Créer le DataFrame des emplacements des modèles
-model_points = pd.DataFrame([
-    {'lat': m['latitude'], 'lon': m['longitude'], 'type': m['name']}
-    for m in MODEL_REGISTRY
-])
-
-# Fusionner les deux DataFrames pour l'affichage de la carte
-# Attention: Streamlit map utilise 'lat' et 'lon' par défaut, mais les couleurs ne sont pas modifiables facilement
-map_data = pd.concat([user_point, model_points])
-
 with col_map:
-    st.subheader("Visualisation de l'Emplacement")
+    st.subheader("Sélection sur la Carte")
 
-    # Affichage de la carte
-    st.map(
-        map_data,
-        latitude='lat',
-        longitude='lon',
-        zoom=7,  # Zoom par défaut pour l'Europe de l'Ouest
-        use_container_width=True
+    # 1. Création de la carte Folium centrée sur le point actuel de l'utilisateur
+    m = folium.Map(
+        location=[st.session_state.latitude, st.session_state.longitude],
+        zoom_start=7,
+        tiles="cartodbpositron"
     )
-    st.caption("🔴 : Votre emplacement. Les autres points sont les modèles disponibles.")
-# --- FIN NOUVEAUTÉ ---
+
+    # 2. Ajout des marqueurs pour les emplacements des modèles (Icône Panneau Solaire)
+    for model in MODEL_REGISTRY:
+        folium.Marker(
+            [model['latitude'], model['longitude']],
+            tooltip=f"{model['name']} (Modèle disponible)",
+            # Utilisation de l'icône de panneau solaire (fa-solar-panel) et couleur bleue
+            icon=folium.Icon(color='blue', icon='solar-panel', prefix='fa')
+        ).add_to(m)
+
+    # 3. Ajout du marqueur de l'utilisateur (Point Rouge)
+    # Nous utilisons un CircleMarker pour un point rouge simple, car il est visuellement différent
+    folium.CircleMarker(
+        [st.session_state.latitude, st.session_state.longitude],
+        radius=8,
+        color='red',
+        fill=True,
+        fill_color='red',
+        fill_opacity=1.0,
+        tooltip="Votre Emplacement Actuel"
+    ).add_to(m)
+
+    # 4. Ajout du plugin pour cliquer et dessiner (pour la mise à jour des coordonnées)
+    # Nous gardons uniquement la fonctionnalité de marqueur
+    from folium.plugins import Draw  # Importer Draw pour éviter les erreurs
+
+    draw = Draw(
+        export=False,
+        position='topleft',
+        draw_options={
+            'polyline': False, 'polygon': False, 'circle': False,
+            'circlemarker': False, 'rectangle': False,
+            # Le seul outil actif est le marqueur (Point)
+            'marker': {'icon': folium.Icon(color='red', icon='map-pin', prefix='fa')}
+        },
+        edit_options={'edit': False, 'remove': True}
+    )
+    draw.add_to(m)
+
+    # 5. Rendu de la carte et récupération de l'état
+    map_data = st_folium(m, width=700, height=450, key="folium_map", return_on_hover=False)
+
+    st.caption("🔴 : Votre emplacement. 🔵 : Emplacements des modèles disponibles.")
+    st.caption("Utilisez l'icône de punaise (top-left) pour placer un nouveau point.")
+
+# --- Logique de mise à jour des coordonnées à partir du clic (Draw) ---
+# Si l'utilisateur a dessiné/placé un nouveau point
+if map_data and map_data.get("last_active_drawing"):
+    drawing_type = map_data["last_active_drawing"].get("geometry", {}).get("type")
+
+    if drawing_type == "Point":
+        coords = map_data["last_active_drawing"]["geometry"]["coordinates"]
+
+        # Folium retourne [longitude, latitude], nous devons les inverser
+        new_lon_from_map = coords[0]
+        new_lat_from_map = coords[1]
+
+        # Mettre à jour les variables de session, ce qui rafraîchira l'interface
+        st.session_state.latitude = new_lat_from_map
+        st.session_state.longitude = new_lon_from_map
+        st.rerun()
+    # --- FIN Logique de mise à jour ---
 
 # Affichage du modèle sélectionné (utilise les coordonnées de session)
 closest_model_info, distance = find_closest_model(st.session_state.latitude, st.session_state.longitude)
