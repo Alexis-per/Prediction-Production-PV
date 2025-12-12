@@ -182,9 +182,8 @@ st.title("Système de Prédiction de Production PV")
 st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
 st.markdown("Les données météos proviennent de **open-meteo.com**")
 
-# Présentation des variables utilisées dans le modèle (inchangée)
+# Présentation des variables utilisées dans le modèle
 col_meteo, col_temporelle = st.columns(2)
-# ... (Contenu des colonnes météo et temporelle) ...
 with col_meteo:
     st.markdown("### Variables Météo")
     st.markdown("- **Température (°C)**")
@@ -204,10 +203,10 @@ st.markdown("---")
 # Interface utilisateur pour la localisation
 st.header("Localisation du panneau PV et Sélection de Modèle")
 
-# --- INTERFACE DE RECHERCHE D'ADRESSE AVEC ZOOM DYNAMIQUE ---
+# --- INTERFACE DE RECHERCHE D'ADRESSE AVEC ZOOM FIXE GLOBAL ---
 col_map, col_input = st.columns([3, 1])
 
-# Initialisation des variables de session (incluant le zoom)
+# Initialisation des variables de session (zoom fixé à 3 pour vue planisphère)
 if 'latitude' not in st.session_state:
     st.session_state.latitude = 51.9701
 if 'longitude' not in st.session_state:
@@ -215,19 +214,19 @@ if 'longitude' not in st.session_state:
 if 'current_location_name' not in st.session_state:
     st.session_state.current_location_name = "Utrecht, Pays-Bas (par défaut)"
 if 'map_zoom' not in st.session_state:
-    st.session_state.map_zoom = 7  # Zoom initial large
+    st.session_state.map_zoom = 3 # Zoom initial fixe pour la vue globale
 
 # 1. Barre d'adresse (dans la colonne de droite)
 with col_input:
     st.subheader("Recherche d'Adresse")
     address_input = st.text_input(
         "Entrez une adresse, une ville ou un lieu :",
-        placeholder="Ex: Tour Eiffel, Paris ou Lisbonne",
+        placeholder="Ex: Sydney, Rome, ou Setubal",
         key="address_search"
     )
     search_button = st.button("Rechercher la Localisation", use_container_width=True)
 
-    # Logique de géocodage et de mise à jour du zoom
+    # Logique de géocodage
     if search_button and address_input:
         with st.spinner(f"Recherche des coordonnées pour '{address_input}'..."):
             new_lat, new_lon, new_name = geocode_address(address_input)
@@ -236,7 +235,7 @@ with col_input:
             st.session_state.latitude = new_lat
             st.session_state.longitude = new_lon
             st.session_state.current_location_name = new_name
-            st.session_state.map_zoom = 12  # Zoom rapproché (12) après recherche
+            # Le zoom reste fixe à 3
             st.success(f"Localisation trouvée : **{new_name}**.")
         else:
             st.error("Adresse non trouvée. Veuillez réessayer avec plus de détails (ex: rue, ville, pays).")
@@ -247,10 +246,11 @@ with col_input:
     st.caption(f"Lat: {st.session_state.latitude:.4f} | Long: {st.session_state.longitude:.4f}")
 
 # 2. Préparation des données pour la carte (dans la colonne de gauche)
+# Point utilisateur marqué distinctement
 user_point = pd.DataFrame({
     'lat': [st.session_state.latitude],
     'lon': [st.session_state.longitude],
-    'type': ['Votre Emplacement']
+    'type': ['📍 Votre Localisation']
 })
 
 model_points = pd.DataFrame([
@@ -258,23 +258,24 @@ model_points = pd.DataFrame([
     for m in MODEL_REGISTRY
 ])
 
+# Fusionner les deux DataFrames. L'ordre peut impacter la couleur par défaut.
 map_data = pd.concat([user_point, model_points])
 
 with col_map:
     st.subheader("Visualisation de l'Emplacement")
 
-    # Affichage de la carte utilisant le zoom dynamique de session
+    # Affichage de la carte utilisant le zoom fixe global
     st.map(
         map_data,
         latitude='lat',
         longitude='lon',
-        zoom=st.session_state.map_zoom,
+        zoom=st.session_state.map_zoom, # Utilise le zoom fixe global (3)
         use_container_width=True
     )
-    st.caption("🔴 : Votre emplacement. Les autres points sont les modèles disponibles.")
-# --- FIN DE L'INTERFACE DE RECHERCHE D'ADRESSE AVEC ZOOM DYNAMIQUE ---
+    st.caption("📍 : Votre localisation recherchée. Les autres points sont les modèles disponibles.")
+# --- FIN DE L'INTERFACE AVEC ZOOM FIXE GLOBAL ---
 
-# Affichage du modèle sélectionné (inchangé)
+# Affichage du modèle sélectionné
 closest_model_info, distance = find_closest_model(st.session_state.latitude, st.session_state.longitude)
 
 st.info(
@@ -283,7 +284,7 @@ st.info(
     f"de votre localisation ({closest_model_info['latitude']:.4f}, {closest_model_info['longitude']:.4f})."
 )
 
-# Inputs du Système PV (Orientation & Azimuth) (inchangé)
+# Inputs du Système PV (Orientation & Azimuth)
 st.markdown("---")
 st.subheader("Orientation du panneau PV")
 
@@ -304,7 +305,7 @@ forecast_days = st.slider("Jours de Prévision", 1, 16, 7)
 
 predict_button = st.button("Lancer la Prédiction", type="primary")
 
-# Application du modèle aux données (inchangée)
+# Application du modèle aux données
 if predict_button:
     pv_model = load_model(closest_model_info['path'])
 else:
