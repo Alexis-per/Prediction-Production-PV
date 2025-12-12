@@ -43,6 +43,13 @@ MODEL_REGISTRY = [
         "longitude": -8.872,
         "location_info": "Modèle de Setubal (Portugal)",
     },
+    {
+        "name": "Alice Springs",
+        "path": "modele_lightGBM_Australie.pkl",
+        "latitude": -23.7002104,
+        "longitude": 133.8806114,
+        "location_info": "Modèle de Alice Springs (Australie)",
+    },
 ]
 
 
