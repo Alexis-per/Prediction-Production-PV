@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 
-# --- 1. Définition des Modèles et de leurs Localisations ---
+# --- 1. Définition des Modèles et de leurs Localisations --- zae
 # Ajoutez ici tous vos modèles (Utrecht, Lisbon, etc.)
 MODEL_REGISTRY = [
     # Utrecht
