@@ -9,6 +9,26 @@ from math import radians, sin, cos, sqrt, atan2
 # NOUVELLES LIBRAIRIES NÉCESSAIRES POUR LA CARTE INTERACTIVE ET LES ICÔNES
 from streamlit_folium import st_folium
 import folium
+from folium.plugins import Draw  # Assurez-vous d'importer Draw
+
+# --- CONFIGURATION DE L'ICÔNE D'IMAGE ---
+# REMPLACER 'solaire_logo.png' par le nom de votre fichier image.
+# L'image doit être dans le même répertoire que votre script Streamlit.
+MODEL_ICON_URL = "istockphoto-1455686956-612x612.jpg"
+ICON_SIZE = (30, 30)  # Taille de l'icône en pixels (largeur, hauteur)
+
+# Création de l'objet CustomIcon une seule fois
+try:
+    CUSTOM_SOLAR_ICON = folium.CustomIcon(
+        icon_image=MODEL_ICON_URL,
+        icon_size=ICON_SIZE,
+        icon_anchor=(ICON_SIZE[0] // 2, ICON_SIZE[1])  # Ancre le bas de l'icône
+    )
+    # st.success(f"Icône personnalisée chargée à partir de {MODEL_ICON_URL}.")
+except FileNotFoundError:
+    # Fallback si l'image n'est pas trouvée
+    st.error(f"ATTENTION : Le fichier icône '{MODEL_ICON_URL}' est introuvable. Revert à l'icône par défaut.")
+    CUSTOM_SOLAR_ICON = folium.Icon(color='blue', icon='solar-panel', prefix='fa')
 
 # --- 1. Définition des Modèles et de leurs Localisations ---
 MODEL_REGISTRY = [
@@ -173,7 +193,7 @@ if 'latitude' not in st.session_state:
 if 'longitude' not in st.session_state:
     st.session_state.longitude = 5.3217
 
-# --- NOUVEAUTÉ : Carte interactive et inputs ---
+# --- Section Carte interactive et inputs ---
 col_map, col_input = st.columns([3, 1])
 
 with col_input:
@@ -216,17 +236,16 @@ with col_map:
         tiles="cartodbpositron"
     )
 
-    # 2. Ajout des marqueurs pour les emplacements des modèles (Icône Panneau Solaire)
+    # 2. Ajout des marqueurs pour les emplacements des modèles (Icône d'Image Personnalisée)
     for model in MODEL_REGISTRY:
         folium.Marker(
             [model['latitude'], model['longitude']],
             tooltip=f"{model['name']} (Modèle disponible)",
-            # Utilisation de l'icône de panneau solaire (fa-solar-panel) et couleur bleue
-            icon=folium.Icon(color='blue', icon='solar-panel', prefix='fa')
+            # UTILISATION DE L'ICÔNE D'IMAGE CUSTOMISÉE
+            icon=CUSTOM_SOLAR_ICON
         ).add_to(m)
 
     # 3. Ajout du marqueur de l'utilisateur (Point Rouge)
-    # Nous utilisons un CircleMarker pour un point rouge simple, car il est visuellement différent
     folium.CircleMarker(
         [st.session_state.latitude, st.session_state.longitude],
         radius=8,
@@ -238,16 +257,12 @@ with col_map:
     ).add_to(m)
 
     # 4. Ajout du plugin pour cliquer et dessiner (pour la mise à jour des coordonnées)
-    # Nous gardons uniquement la fonctionnalité de marqueur
-    from folium.plugins import Draw  # Importer Draw pour éviter les erreurs
-
     draw = Draw(
         export=False,
         position='topleft',
         draw_options={
             'polyline': False, 'polygon': False, 'circle': False,
             'circlemarker': False, 'rectangle': False,
-            # Le seul outil actif est le marqueur (Point)
             'marker': {'icon': folium.Icon(color='red', icon='map-pin', prefix='fa')}
         },
         edit_options={'edit': False, 'remove': True}
@@ -257,7 +272,7 @@ with col_map:
     # 5. Rendu de la carte et récupération de l'état
     map_data = st_folium(m, width=700, height=450, key="folium_map", return_on_hover=False)
 
-    st.caption("🔴 : Votre emplacement. 🔵 : Emplacements des modèles disponibles.")
+    st.caption(f"🔴 : Votre emplacement. [Image de Panneau Solaire] : Emplacements des modèles disponibles.")
     st.caption("Utilisez l'icône de punaise (top-left) pour placer un nouveau point.")
 
 # --- Logique de mise à jour des coordonnées à partir du clic (Draw) ---
