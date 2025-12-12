@@ -5,60 +5,68 @@ import joblib
 import numpy as np
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
+import os # <-- Importation nécessaire pour joindre les chemins
+
+# --- NOUVEAUTÉ : DÉFINITION DU CHEMIN DE BASE POUR LES MODÈLES ---
+# IMPORTANT : Adaptez ce chemin en fonction de l'endroit où sont stockés vos fichiers .pkl
+# Si les fichiers sont dans le même dossier que ce script, vous pouvez laisser '.'
+# Si les fichiers sont dans un sous-dossier 'models', utilisez 'models'
+BASE_MODEL_PATH = "modèles" # Par exemple, si vous avez un dossier 'models'
 
 # --- 1. Définition des Modèles et de leurs Localisations (MIS À JOUR) ---
-# NOTE: Le chemin de base doit correspondre à la NOM_BASE que vous avez utilisée pour l'exportation
+# NOTE: Seul le nom du fichier est stocké ici, le chemin de base sera ajouté lors du chargement.
 MODEL_REGISTRY = [
     {
         "name": "Utrecht",
-        "path_mean": "modele_lightGBM_mean.pkl",
-        "path_lower": "modele_lightGBM_lower.pkl",
-        "path_upper": "modele_lightGBM_upper.pkl",
+        # NOTE: Les chemins stockés ici sont maintenant les NOMS de fichiers uniquement
+        "file_mean": "modele_lightGBM_mean.pkl",
+        "file_lower": "modele_lightGBM_lower.pkl",
+        "file_upper": "modele_lightGBM_upper.pkl",
         "latitude": 51.9701,
         "longitude": 5.3217,
         "location_info": "Modèle d'Utrecht (Pays-Bas)",
     },
     {
         "name": "Lisbon1",
-        "path_mean": "modele_lightGBM_Lisbon1_mean.pkl",
-        "path_lower": "modele_lightGBM_Lisbon1_lower.pkl",
-        "path_upper": "modele_lightGBM_Lisbon1_upper.pkl",
+        "file_mean": "modele_lightGBM_Lisbon1_mean.pkl",
+        "file_lower": "modele_lightGBM_Lisbon1_lower.pkl",
+        "file_upper": "modele_lightGBM_Lisbon1_upper.pkl",
         "latitude": 38.728,
         "longitude": -9.138,
         "location_info": "Modèle de Lisbonne (Portugal)",
     },
     {
         "name": "Faro",
-        "path_mean": "modele_lightGBM_Faro_mean.pkl",
-        "path_lower": "modele_lightGBM_Faro_lower.pkl",
-        "path_upper": "modele_lightGBM_Faro_upper.pkl",
+        "file_mean": "modele_lightGBM_Faro_mean.pkl",
+        "file_lower": "modele_lightGBM_Faro_lower.pkl",
+        "file_upper": "modele_lightGBM_Faro_upper.pkl",
         "latitude": 37.031,
         "longitude": -7.893,
         "location_info": "Modèle de Faro (Portugal)",
     },
     {
         "name": "Braga",
-        "path_mean": "modele_lightGBM_Braga_mean.pkl",
-        "path_lower": "modele_lightGBM_Braga_lower.pkl",
-        "path_upper": "modele_lightGBM_Braga_upper.pkl",
+        "file_mean": "modele_lightGBM_Braga_mean.pkl",
+        "file_lower": "modele_lightGBM_Braga_lower.pkl",
+        "file_upper": "modele_lightGBM_Braga_upper.pkl",
         "latitude": 41.493,
         "longitude": -8.496,
         "location_info": "Modèle de Braga (Portugal)",
     },
     {
         "name": "Setubal",
-        "path_mean": "modele_lightGBM_Setubal_mean.pkl",
-        "path_lower": "modele_lightGBM_Setubal_lower.pkl",
-        "path_upper": "modele_lightGBM_Setubal_upper.pkl",
+        "file_mean": "modele_lightGBM_Setubal_mean.pkl",
+        "file_lower": "modele_lightGBM_Setubal_lower.pkl",
+        "file_upper": "modele_lightGBM_Setubal_upper.pkl",
         "latitude": 38.577,
         "longitude": -8.872,
         "location_info": "Modèle de Setubal (Portugal)",
     },
     {
         "name": "Alice Springs",
-        "path_mean": "modele_lightGBM_AliceSprings_mean.pkl",
-        "path_lower": "modele_lightGBM_AliceSprings_lower.pkl",
-        "path_upper": "modele_lightGBM_AliceSprings_upper.pkl",
+        "file_mean": "modele_lightGBM_AliceSprings_mean.pkl",
+        "file_lower": "modele_lightGBM_AliceSprings_lower.pkl",
+        "file_upper": "modele_lightGBM_AliceSprings_upper.pkl",
         "latitude": -23.7002104,
         "longitude": 133.8806114,
         "location_info": "Modèle de Alice Springs (Australie)",
@@ -99,9 +107,11 @@ def load_models(paths):
     models = {}
     for key, path in paths.items():
         try:
-            models[key] = joblib.load(path)
+            # Utiliser os.path.join est plus robuste pour différents OS (Windows/Linux)
+            full_path = os.path.join(BASE_MODEL_PATH, path)
+            models[key] = joblib.load(full_path)
         except FileNotFoundError:
-            st.error(f"Erreur : Fichier modèle '{path}' introuvable. Assurez-vous qu'il existe.")
+            st.error(f"Erreur : Fichier modèle '{full_path}' introuvable. Assurez-vous qu'il existe.")
             return None
     return models
 
@@ -325,11 +335,11 @@ predict_button = st.button("Lancer la Prédiction", type="primary")
 
 # Application des modèles aux données
 if predict_button:
-    # Charger les trois modèles
+    # Construire les chemins de fichiers (juste les noms de fichiers, le chemin de base sera ajouté dans load_models)
     model_paths = {
-        'mean': closest_model_info['path_mean'],
-        'lower': closest_model_info['path_lower'],
-        'upper': closest_model_info['path_upper'],
+        'mean': closest_model_info['file_mean'], # <-- Changé de 'path_mean' à 'file_mean'
+        'lower': closest_model_info['file_lower'], # <-- Changé de 'path_lower' à 'file_lower'
+        'upper': closest_model_info['file_upper'], # <-- Changé de 'path_upper' à 'file_upper'
     }
     pv_models = load_models(model_paths)
 else:
