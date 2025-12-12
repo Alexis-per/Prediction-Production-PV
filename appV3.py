@@ -214,7 +214,7 @@ longitude = st.number_input("Longitude (Long)", min_value=-180.0, max_value=180.
 closest_model_info, distance = find_closest_model(latitude, longitude)
 
 st.info(
-    f"ℹ️ **Modèle Sélectionné:** **{closest_model_info['name']}**.\n\n"
+    f"**Modèle Sélectionné:** **{closest_model_info['name']}**.\n\n"
     f"Ce modèle est le plus proche géographiquement (à **{distance:,.0f} km**) "
     f"de votre localisation ({closest_model_info['latitude']:.4f}, {closest_model_info['longitude']:.4f})."
 )
