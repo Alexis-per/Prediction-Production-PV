@@ -5,7 +5,6 @@ import joblib
 import numpy as np
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
-import plotly.express as px  # <--- NOUVEL IMPORT NECESSAIRE
 
 # --- 1. Définition des Modèles et de leurs Localisations ---
 MODEL_REGISTRY = [
@@ -215,7 +214,7 @@ if 'longitude' not in st.session_state:
 if 'current_location_name' not in st.session_state:
     st.session_state.current_location_name = "Utrecht, Pays-Bas (par défaut)"
 if 'map_zoom' not in st.session_state:
-    st.session_state.map_zoom = 3  # Zoom initial fixe pour la vue globale
+    st.session_state.map_zoom = 3 # Zoom initial fixe pour la vue globale
 
 # 1. Barre d'adresse (dans la colonne de droite)
 with col_input:
@@ -259,49 +258,21 @@ model_points = pd.DataFrame([
     for m in MODEL_REGISTRY
 ])
 
-# Fusionner les deux DataFrames.
+# Fusionner les deux DataFrames. L'ordre peut impacter la couleur par défaut.
 map_data = pd.concat([user_point, model_points])
 
 with col_map:
     st.subheader("Visualisation de l'Emplacement")
 
-    # --- NOUVEAU BLOC AVEC PLOTLY EXPRESS ---
-    # 1. Définir le mapping des couleurs
-    color_map = {
-        # J'utilise 'green' pour le point choisi, vous pouvez changer pour 'blue' ou 'teal' si vous préférez.
-        '📍 Votre Localisation': 'green',
-        # Orange pour tous les autres points
-        **{name: 'orange' for name in model_points['type'].unique()}
-    }
-
-    # 2. Créer la figure Plotly
-    fig = px.scatter_mapbox(
+    # Affichage de la carte utilisant le zoom fixe global
+    st.map(
         map_data,
-        lat="lat",
-        lon="lon",
-        # Utiliser la colonne 'type' pour déterminer la couleur et le groupe
-        color="type",
-        color_discrete_map=color_map,  # Appliquer le mapping de couleur
-        zoom=st.session_state.map_zoom,
-        height=400,
-        mapbox_style="open-street-map",  # Style de carte de base
-        # Définir la taille des marqueurs (plus grand pour le point utilisateur)
-        size=map_data['type'].apply(lambda x: 15 if x == '📍 Votre Localisation' else 10),
-        size_max=15,
-        hover_name='type'
+        latitude='lat',
+        longitude='lon',
+        zoom=st.session_state.map_zoom, # Utilise le zoom fixe global (3)
+        use_container_width=True
     )
-
-    # 3. Mettre à jour la mise en page
-    fig.update_layout(
-        margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        legend_title_text='Légende'
-    )
-
-    # 4. Afficher la carte dans Streamlit
-    st.plotly_chart(fig, use_container_width=True)
-    # --- FIN DU NOUVEAU BLOC ---
-
-    st.caption("📍 (Vert) : Votre localisation recherchée. Les autres points (Orange) sont les modèles disponibles.")
+    st.caption("📍 : Votre localisation recherchée. Les autres points sont les modèles disponibles.")
 # --- FIN DE L'INTERFACE AVEC ZOOM FIXE GLOBAL ---
 
 # Affichage du modèle sélectionné
