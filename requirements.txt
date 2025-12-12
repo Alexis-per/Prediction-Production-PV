@@ -8,3 +8,4 @@ numpy
 joblib
 folium
 streamlit-folium
+plotly
