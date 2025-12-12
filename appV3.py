@@ -10,6 +10,7 @@ from math import radians, sin, cos, sqrt, atan2
 # Ajoutez ici tous vos modèles (Utrecht, Paris, Tokyo, etc.)
 # Chaque entrée est un dictionnaire avec le chemin du fichier, la latitude et la longitude.
 MODEL_REGISTRY = [
+    # Utrecht
     {
         "name": "Utrecht",
         "path": "modele_lightGBM.pkl", # Le chemin de votre modèle actuel
@@ -17,14 +18,38 @@ MODEL_REGISTRY = [
         "longitude": 5.3217,
         "location_info": "Modèle d'Utrecht (Pays-Bas)",
     },
+    # Lisbon1
     {
         "name": "Lisbon1",
         "path": "modele_lightGBM_Lisbon1.pkl", # Exemple: ce fichier doit exister !
         "latitude": 38.728,
         "longitude": -9.138,
-        "location_info": "Modèle de Paris (France)",
+        "location_info": "Modèle de Lisbonne (Portugal)",
     },
-
+    # Faro
+    {
+        "name": "Faro",
+        "path": "modele_lightGBM_Faro.pkl",  # Exemple: ce fichier doit exister !
+        "latitude": 37.031,
+        "longitude": -7.893,
+        "location_info": "Modèle de Faro (Portugal)",
+    },
+    # Braga
+    {
+        "name": "Braga",
+        "path": "modele_lightGBM_Braga.pkl",  # Exemple: ce fichier doit exister !
+        "latitude": 41.493,
+        "longitude": -8.496,
+        "location_info": "Modèle de Braga (Portugal)",
+    },
+    # Setubal
+    {
+        "name": "Setubal",
+        "path": "modele_lightGBM_Setubal.pkl",  # Exemple: ce fichier doit exister !
+        "latitude": 38.577,
+        "longitude": -8.872,
+        "location_info": "Modèle de Setubal (Portugal)",
+    },
 
     # Ajoutez d'autres modèles ici si vous les avez:
     # {
