@@ -280,7 +280,7 @@ user_point = pd.DataFrame({
     'lat': [st.session_state.latitude],
     'lon': [st.session_state.longitude],
     'name': ['Votre Localisation'],
-    'emoji': ['📍'],
+    'emoji': ['📌'],
     'color': [[255, 0, 0, 255]]  # Rouge
 })
 
