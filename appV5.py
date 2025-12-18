@@ -7,6 +7,7 @@ from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 import os # <-- Importation nécessaire pour joindre les chemins
 import altair as alt
+import pydeck as pdk
 
 # --- NOUVEAUTÉ : DÉFINITION DU CHEMIN DE BASE POUR LES MODÈLES ---
 # IMPORTANT : Adaptez ce chemin en fonction de l'endroit où sont stockés vos fichiers .pkl
