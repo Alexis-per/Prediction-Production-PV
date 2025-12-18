@@ -515,7 +515,6 @@ if pv_models and predict_button:
             y=alt.Y('Lower_Bound', title='Production (kW/kWc)'),
             y2='Upper_Bound'
         ).properties(
-            title='Prévision Horaire avec IC 95%'
         )
 
         # 3. Définir le tracé de la prédiction moyenne
