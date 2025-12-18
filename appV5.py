@@ -206,6 +206,8 @@ def fetch_weather_data(latitude, longitude, tilt, azimuth, days=7):
 # Interface de l'application (inchangée jusqu'au bouton de prédiction)
 st.title("Système de Prédiction de Production PV")
 st.markdown("Le modèle de prédiction utilisé est un modèle de type LightGBM")
+st.markdown("Plusieurs sources de données ont été utiliées pour créer les modèles")
+st.markdown("Le site choisit automatiquement le modèle le + proche du lieu rentré pour prédire la production PV")
 st.markdown("Les données météos proviennent de **open-meteo.com**")
 
 # Présentation des variables utilisées dans le modèle
