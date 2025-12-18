@@ -400,15 +400,32 @@ if pv_models and predict_button:
 
         with tab_temp:
             st.markdown("##### Température et Humidité à 2 mètres")
-            base = alt.Chart(df_meteo.reset_index()).encode(x=alt.X('time:T', title='Temps'))
 
-            line_temp = base.mark_line(color='#E63946').encode(
-                y=alt.Y('temperature_2m_(°C):Q', title='Température (°C) / Humidité (%)')
+            # 1. Création de la base du graphique (l'axe X commun)
+            base = alt.Chart(df_meteo.reset_index()).encode(
+                x=alt.X('time:T', title='Temps')
             )
-            line_hum = base.mark_line(color='#457B9D').encode(
-                y='relative_humidity_2m_(%):Q'
+
+            # 2. Courbe de Température (Axe à gauche)
+            temp_line = base.mark_line(color='#E63946').encode(
+                y=alt.Y('temperature_2m_(°C):Q',
+                        title='Température (°C)',
+                        axis=alt.Axis(titleColor='#E63946'))
             )
-            st.altair_chart(line_temp + line_hum, use_container_width=True)
+
+            # 3. Courbe d'Humidité (Axe à droite)
+            hum_line = base.mark_line(color='#457B9D').encode(
+                y=alt.Y('relative_humidity_2m_(%):Q',
+                        title='Humidité (%)',
+                        axis=alt.Axis(titleColor='#457B9D'))
+            )
+
+            # 4. Fusion des graphiques avec axes Y indépendants
+            combined_chart = alt.layer(temp_line, hum_line).resolve_scale(
+                y='independent'
+            ).interactive()
+
+            st.altair_chart(combined_chart, use_container_width=True)
 
         with tab_cloud:
             st.markdown("##### Couverture Nuageuse et Vitesse du Vent")
