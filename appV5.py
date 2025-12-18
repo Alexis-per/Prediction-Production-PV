@@ -274,33 +274,59 @@ with col_input:
     st.caption(f"Lat: {st.session_state.latitude:.4f} | Long: {st.session_state.longitude:.4f}")
 
 # 2. Préparation des données pour la carte (dans la colonne de gauche)
-# Point utilisateur marqué distinctement
+# On crée une colonne 'emoji' pour le symbole et 'color' pour la couleur du texte
 user_point = pd.DataFrame({
     'lat': [st.session_state.latitude],
     'lon': [st.session_state.longitude],
-    'type': ['📍 Votre Localisation']
+    'name': ['Votre Localisation'],
+    'emoji': ['📍'],
+    'color': [[255, 0, 0, 255]]  # Rouge
 })
 
 model_points = pd.DataFrame([
-    {'lat': m['latitude'], 'lon': m['longitude'], 'type': m['name']}
+    {
+        'lat': m['latitude'],
+        'lon': m['longitude'],
+        'name': f"Modèle: {m['name']}",
+        'emoji': '☀️',
+        'color': [255, 165, 0, 255]  # Orange
+    }
     for m in MODEL_REGISTRY
 ])
 
-# Fusionner les deux DataFrames. L'ordre peut impacter la couleur par défaut.
 map_data = pd.concat([user_point, model_points])
 
 with col_map:
     st.subheader("Visualisation de l'Emplacement")
 
-    # Affichage de la carte utilisant le zoom fixe global
-    st.map(
+    # Utilisation du TextLayer pour afficher les emojis directement
+    layer = pdk.Layer(
+        "TextLayer",
         map_data,
-        latitude='lat',
-        longitude='lon',
-        zoom=st.session_state.map_zoom,  # Utilise le zoom fixe global (3)
-        use_container_width=True
+        get_position='[lon, lat]',
+        get_text='emoji',
+        get_color='color',
+        get_size=35,  # Tu peux augmenter ce chiffre pour des emojis plus gros
+        get_angle=0,
+        text_anchor='"middle"',
+        alignment_baseline='"center"',
+        pickable=True,
     )
-    st.caption("📍 : Votre localisation recherchée. Les autres points sont les modèles disponibles.")
+
+    view_state = pdk.ViewState(
+        latitude=st.session_state.latitude,
+        longitude=st.session_state.longitude,
+        zoom=st.session_state.map_zoom,
+        pitch=0
+    )
+
+    st.pydeck_chart(pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={"text": "{name}"}
+    ))
+
+    st.caption("📍 : Votre recherche | ☀️ : Modèles PV disponibles (survolez pour voir les noms)")
 # --- FIN DE L'INTERFACE AVEC ZOOM FIXE GLOBAL ---
 
 # Affichage du modèle sélectionné
