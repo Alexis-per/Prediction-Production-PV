@@ -11,7 +11,7 @@ import os # <-- Importation nécessaire pour joindre les chemins
 # IMPORTANT : Adaptez ce chemin en fonction de l'endroit où sont stockés vos fichiers .pkl
 # Si les fichiers sont dans le même dossier que ce script, vous pouvez laisser '.'
 # Si les fichiers sont dans un sous-dossier 'models', utilisez 'models'
-BASE_MODEL_PATH = "modèles" # Par exemple, si vous avez un dossier 'models'
+BASE_MODEL_PATH = "models" # Par exemple, si vous avez un dossier 'models'
 
 # --- 1. Définition des Modèles et de leurs Localisations (MIS À JOUR) ---
 # NOTE: Seul le nom du fichier est stocké ici, le chemin de base sera ajouté lors du chargement.
