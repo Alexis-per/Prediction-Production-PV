@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
-import os # <-- Importation nécessaire pour joindre les chemins
+import os
 import altair as alt
 import pydeck as pdk
 
