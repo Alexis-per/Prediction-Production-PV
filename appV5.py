@@ -274,23 +274,23 @@ with col_input:
     st.caption(f"**{st.session_state.current_location_name}**")
     st.caption(f"Lat: {st.session_state.latitude:.4f} | Long: {st.session_state.longitude:.4f}")
 
-# 2. Préparation des données pour la carte (dans la colonne de gauche)
-# On crée une colonne 'emoji' pour le symbole et 'color' pour la couleur du texte
+
+# 2. Préparation des données pour la carte
+# Lieu utilisateur : Rouge [255, 0, 0]
 user_point = pd.DataFrame({
     'lat': [st.session_state.latitude],
     'lon': [st.session_state.longitude],
-    'name': ['Votre Localisation'],
-    'emoji': ['📌'],
-    'color': [[255, 0, 0, 255]]  # Rouge
+    'name': ['📍 Votre Localisation'],
+    'r': [255], 'g': [0], 'b': [0]
 })
 
+# Modèles : Vert [40, 167, 69]
 model_points = pd.DataFrame([
     {
         'lat': m['latitude'],
         'lon': m['longitude'],
         'name': f"Modèle: {m['name']}",
-        'emoji': '☀️',
-        'color': [255, 165, 0, 255]  # Orange
+        'r': 40, 'g': 167, 'b': 69
     }
     for m in MODEL_REGISTRY
 ])
@@ -300,19 +300,17 @@ map_data = pd.concat([user_point, model_points])
 with col_map:
     st.subheader("Visualisation de l'Emplacement")
 
-    # Configuration de la couche de texte
+    # Couche de points (Scatterplot)
     layer = pdk.Layer(
-        "TextLayer",
+        "ScatterplotLayer",
         map_data,
         get_position='[lon, lat]',
-        get_text='emoji',
-        get_color='color',
-        get_size=35,
-        # AJOUT ICI : On force une police emoji standard
-        font_family='"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
-        text_anchor='"middle"',
-        alignment_baseline='"center"',
+        get_color='[r, g, b, 200]',  # 200 = légère transparence
+        get_radius=100000,  # Taille des points (100km de rayon)
         pickable=True,
+        stroked=True,  # Ajoute un contour
+        line_width_min_pixels=2,
+        get_line_color=[255, 255, 255]  # Contour blanc pour le contraste
     )
 
     view_state = pdk.ViewState(
@@ -326,11 +324,11 @@ with col_map:
         layers=[layer],
         initial_view_state=view_state,
         tooltip={"text": "{name}"},
-        # Optionnel : changer le style de la carte pour mieux voir les emojis
         map_style="mapbox://styles/mapbox/light-v9"
     ))
 
-    st.caption("📍 : Votre recherche | ☀️ : Modèles PV disponibles")
+    st.caption("🔴 : Votre recherche | 🟢 : Modèles disponibles (survolez pour voir les noms)")
+
 # --- FIN DE L'INTERFACE AVEC ZOOM FIXE GLOBAL ---
 
 # Affichage du modèle sélectionné
