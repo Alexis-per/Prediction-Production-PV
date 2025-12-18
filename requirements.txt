@@ -9,3 +9,4 @@ joblib
 folium
 streamlit-folium
 plotly
+Altair

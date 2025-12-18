@@ -85,7 +85,6 @@ def haversine(lat1, lon1, lat2, lon2):
     distance = R * c
     return distance
 
-
 # --- 3. Fonction pour trouver le Modèle le Plus Proche ---
 def find_closest_model(user_latitude, user_longitude):
     min_distance = float('inf')
@@ -392,7 +391,11 @@ if pv_models and predict_button:
 
         with tab_gti:
             st.markdown("##### Irradiation Globale Inclinée (GTI) sur le panneau")
-            st.line_chart(df_meteo[['global_tilted_irradiance_(W/m²)']], use_container_width=True)
+            chart_gti = alt.Chart(df_meteo.reset_index()).mark_line(color='#FFA500').encode(
+                x=alt.X('time:T', title='Temps (Heures/Jours)'),
+                y=alt.Y('global_tilted_irradiance_(W/m²):Q', title='Irradiance (W/m²)')
+            ).interactive()
+            st.altair_chart(chart_gti, use_container_width=True)
 
         with tab_temp:
             st.markdown("##### Température et Humidité à 2 mètres")
