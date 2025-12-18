@@ -400,12 +400,30 @@ if pv_models and predict_button:
 
         with tab_temp:
             st.markdown("##### Température et Humidité à 2 mètres")
-            st.line_chart(df_meteo[['temperature_2m_(°C)', 'relative_humidity_2m_(%)']], use_container_width=True)
+            base = alt.Chart(df_meteo.reset_index()).encode(x=alt.X('time:T', title='Temps'))
+
+            line_temp = base.mark_line(color='#E63946').encode(
+                y=alt.Y('temperature_2m_(°C):Q', title='Température (°C) / Humidité (%)')
+            )
+            line_hum = base.mark_line(color='#457B9D').encode(
+                y='relative_humidity_2m_(%):Q'
+            )
+            st.altair_chart(line_temp + line_hum, use_container_width=True)
 
         with tab_cloud:
             st.markdown("##### Couverture Nuageuse et Vitesse du Vent")
-            st.area_chart(df_meteo[['cloud_cover_(%)']], use_container_width=True)
-            st.line_chart(df_meteo[['wind_speed_10m_(km/h)']], use_container_width=True)
+            chart_cloud = alt.Chart(df_meteo.reset_index()).mark_area(opacity=0.4, color='#8D99AE').encode(
+                x=alt.X('time:T', title='Temps'),
+                y=alt.Y('cloud_cover_(%):Q', title='Couverture Nuageuse (%)')
+            )
+            st.altair_chart(chart_cloud, use_container_width=True)
+
+            # Vitesse du vent
+            chart_wind = alt.Chart(df_meteo.reset_index()).mark_line(color='#2B2D42').encode(
+                x=alt.X('time:T', title='Temps'),
+                y=alt.Y('wind_speed_10m_(km/h):Q', title='Vitesse du vent (km/h)')
+            )
+            st.altair_chart(chart_wind, use_container_width=True)
 
         # Faire les Prédictions des Trois Modèles
         with st.spinner("Calcul des prédictions de production PV et de l'incertitude..."):
