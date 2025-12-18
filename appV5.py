@@ -324,7 +324,8 @@ with col_map:
         layers=[layer],
         initial_view_state=view_state,
         tooltip={"text": "{name}"},
-        map_style="mapbox://styles/mapbox/light-v9"
+        # REMPLACER map_style PAR CETTE URL LIBRE :
+        map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
     ))
 
     st.caption("🔴 : Votre recherche | 🟢 : Modèles disponibles (survolez pour voir les noms)")
