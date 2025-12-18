@@ -300,15 +300,16 @@ map_data = pd.concat([user_point, model_points])
 with col_map:
     st.subheader("Visualisation de l'Emplacement")
 
-    # Utilisation du TextLayer pour afficher les emojis directement
+    # Configuration de la couche de texte
     layer = pdk.Layer(
         "TextLayer",
         map_data,
         get_position='[lon, lat]',
         get_text='emoji',
         get_color='color',
-        get_size=35,  # Tu peux augmenter ce chiffre pour des emojis plus gros
-        get_angle=0,
+        get_size=35,
+        # AJOUT ICI : On force une police emoji standard
+        font_family='"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
         text_anchor='"middle"',
         alignment_baseline='"center"',
         pickable=True,
@@ -324,10 +325,12 @@ with col_map:
     st.pydeck_chart(pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
-        tooltip={"text": "{name}"}
+        tooltip={"text": "{name}"},
+        # Optionnel : changer le style de la carte pour mieux voir les emojis
+        map_style="mapbox://styles/mapbox/light-v9"
     ))
 
-    st.caption("📍 : Votre recherche | ☀️ : Modèles PV disponibles (survolez pour voir les noms)")
+    st.caption("📍 : Votre recherche | ☀️ : Modèles PV disponibles")
 # --- FIN DE L'INTERFACE AVEC ZOOM FIXE GLOBAL ---
 
 # Affichage du modèle sélectionné
