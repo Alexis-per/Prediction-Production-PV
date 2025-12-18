@@ -306,7 +306,7 @@ with col_map:
         map_data,
         get_position='[lon, lat]',
         get_color='[r, g, b, 200]',  # 200 = légère transparence
-        get_radius=2000,  # Taille des points (100km de rayon)
+        get_radius=20000,  # Taille des points (100km de rayon)
         pickable=True,
         stroked=True,  # Ajoute un contour
         line_width_min_pixels=2,
