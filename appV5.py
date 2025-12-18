@@ -19,9 +19,9 @@ MODEL_REGISTRY = [
     {
         "name": "Utrecht",
         # NOTE: Les chemins stockés ici sont maintenant les NOMS de fichiers uniquement
-        "file_mean": "modele_lightGBM_mean.pkl",
-        "file_lower": "modele_lightGBM_lower.pkl",
-        "file_upper": "modele_lightGBM_upper.pkl",
+        "file_mean": "modele_lightGBM_Utrecht_mean.pkl",
+        "file_lower": "modele_lightGBM_Utrecht_lower.pkl",
+        "file_upper": "modele_lightGBM_Utrecht_upper.pkl",
         "latitude": 51.9701,
         "longitude": 5.3217,
         "location_info": "Modèle d'Utrecht (Pays-Bas)",
